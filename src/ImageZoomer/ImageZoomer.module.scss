@@ -1,0 +1,16 @@
+.wrapper {
+  overflow: hidden;
+  background-color: red; // for testing only.  I should never be able to see any red if all works
+  display: block;
+  position: relative;
+}
+
+.image { 
+  // setting backface-visibility fixes Chrome bug where
+  // you can't click on an element after you apply a transform.
+  // It works fine in Firefox.  Don't tell Conor, he'll never
+  // let me live it down.
+  backface-visibility: hidden; 
+  max-width: 100%;
+  display: block;
+}
