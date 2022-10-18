@@ -1,9 +1,10 @@
 # Image Zoomer
 
-I desktop amd mobile-web comatible "image zooming" component.  Key features.
+A desktop amd mobile-web comatible "image zooming" component.  
 
+Key features:
 - Ultra fast animations
-- ZERO re-renders
+- ZERO component re-renders
 - No memory leaks! (always a plus)
 - Prevents scrolling the entire page
 
