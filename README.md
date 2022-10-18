@@ -1,6 +1,8 @@
 # Image Zoomer
 
-A desktop amd mobile-web comatible "image zooming" component.  
+A desktop amd mobile-web compatible "image zooming" component that responds to mouse and touch events.
+
+Demo: https://mrbinky3000.github.io/ReactImageZoomer/
 
 Key features:
 - Ultra fast animations
@@ -34,7 +36,7 @@ The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
 
-### Advanced Configuration 
+### Advanced Configuration
 (This part is left over from default Create React App docs.  Will delete or update eventually)
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
