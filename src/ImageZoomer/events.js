@@ -10,12 +10,17 @@ let minScale;
 let origin;
 let scale;
 let start;
+let distanceTotal = 0;
+let distanceOld = 0;
+let distanceNew = 0;
 let wrapperEl;
+let movingDistancePrevious
+let movingDistanceNow
 
 function _log(text) {
   const screenLog = document.getElementById('screenLog');
   screenLog.insertAdjacentHTML('beforeend', `${text}<br>`);
-  while (screenLog.childNodes.length > 10) screenLog.firstChild.remove()
+  while (screenLog.childNodes.length > 20) screenLog.firstChild.remove()
 }
 
 function _origin(x, left, width) {
@@ -29,7 +34,6 @@ function computeOrigin(ev) {
     const y = _origin(ev.clientY, rect.top, rect.height); //y position within the element.
     return [x, y];
   } else if (ev.type === 'touchstart') {
-    _log('touchstart')
     const x = _origin(ev.touches[0].clientX, rect.left, rect.width); //x position within the element.
     const y = _origin(ev.touches[0].clientY, rect.top, rect.height); //y position within the element.
     return [x, y];
@@ -69,7 +73,7 @@ export const init = (
   // using native events instead of react synthetic events
   // was the easiest way to stop pinch gesture from zooming entire
   // page on ios devices
-  wrapperEl.current.addEventListener('touchstart', handleTouchStart, false);
+  wrapperEl.current.addEventListener('touchstart', handleTouchStart, true);
   wrapperEl.current.addEventListener('touchmove', handleTouchMove, false);
   wrapperEl.current.addEventListener('touchend', handleTouchEnd, true);
   wrapperEl.current.addEventListener('mousedown', handleMouseDown, false);
@@ -79,7 +83,7 @@ export const init = (
 export const cleanup = () => {
   window.cancelAnimationFrame(animationFrameId);
 
-  wrapperEl.current.removeEventListener('touchstart', handleTouchStart, false);
+  wrapperEl.current.removeEventListener('touchstart', handleTouchStart, true);
   wrapperEl.current.removeEventListener('touchmove', handleTouchMove, false);
   wrapperEl.current.removeEventListener('touchend', handleTouchEnd, true);
   wrapperEl.current.removeEventListener('mousedown', handleMouseDown, false);
@@ -97,6 +101,7 @@ export const cleanup = () => {
 }
 
 export const handleOnClick = (ev) => {
+  _log('handleOnClick');
   // Only react to clicks on the image, not other children
   // For example, ignore clicks on add to bag button
   if (ev.target !== imgEl.current) {
@@ -119,34 +124,48 @@ export const handleOnClick = (ev) => {
   }
 };
 
+let startingDistance = 0;
+let totalFingerDistance = 0;
+let isZoomingSession = false;
+let startingScale
+
+
 export const handleTouchStart = (ev) => {
+  _log('handleTouchStart');
   if (ev.touches.length === 1) {
     handleOnClick(ev);
   }
-  if (ev.touches.length > 1) {
+  if (ev.touches.length === 2) {
     ev.preventDefault();
+    // start.x = (ev.touches[0].pageX + ev.touches[1].pageX) / 2;
+    // start.y = (ev.touches[0].pageY + ev.touches[1].pageY) / 2;
 
     // compute distance between touches
-    start.x = (ev.touches[0].pageX + ev.touches[1].pageX) / 2;
-    start.y = (ev.touches[0].pageY + ev.touches[1].pageY) / 2;
-    // const deltaDistance = distance(ev) - start.distance;
-    // start.distance = start.distance + deltaDistance;
-    start.distance = distance(ev);
-    start.moveDistanceOld = start.distance;
+    gestureStartDistance = 0;
+
   }
 };
 
-export const handleTouchMove = (ev) => {
-  if (ev.touches.length > 1) {
-    _log(start.moveDistanceOld);
-    const moveDistanceNew = distance(ev);
-    const distanceDelta = moveDistanceNew - start.moveDistanceOld;
-    const newScale = Math.min(Math.max(minScale, start.distance + distanceDelta / start.distance), maxScale);
-    start.moveDistanceOld = moveDistanceNew;
+let gestureStartDistance = 0;
 
-    // _log(`o: "${scale}" c: "${currentScale} "n: "${newScale}"`);
-    // scale = Math.min(Math.max(1, newScale), 4);
-    scale = newScale;
+/// SCREW CALCULATING DISTANCE, ONLY CARE ABOUT MAKING SCALE BIGGER OR SMALLER!!!
+/// KEEP TRACK OF SCALE SO THAT SCALE WILL WORK WITH TAP ZOOM
+
+
+export const handleTouchMove = (ev) => {
+  _log(`handleTouchMove ${scale}`);
+  if ((ev.touches.length === 2) && (scale >= minScale) && (scale <= maxScale)) {
+    const currentFingerDistance = distance(ev);
+    if (!gestureStartDistance) {
+      gestureStartDistance = currentFingerDistance;
+    }
+    const deltaDistance = currentFingerDistance - gestureStartDistance;
+    totalFingerDistance = totalFingerDistance + deltaDistance;
+
+    const newScale = scale + totalFingerDistance/(gestureStartDistance * 1000);
+
+    _log(`deltaDistance: ${deltaDistance}, newScale: ${newScale}`);
+    scale = Math.min(Math.max(minScale, newScale), maxScale);
 
     // Calculate the geographic center of the two touches
     // All you do is average the x coords and y coords to find center
@@ -168,15 +187,15 @@ export const handleTouchMove = (ev) => {
 
 export const handleTouchEnd = (ev) => {
   ev.preventDefault();
-  // start = {};
-  // origin = {};
+  _log(`touchend`);
   imgEl.current.style.transition = TRANSITION_ANIMATION;
-  // imgEl.current.style.scale = 1;
-  // imgEl.current.style.transformOrigin = '0 0 0';
   document.body.style.touchAction = null;
+  totalFingerDistance = 0;
+  _log('gestureStartDistance now zero')
 };
 
 export const handleMouseDown = (ev) => {
+  _log('handleMouseDown');
   isDragging = false;
   isMouseDown = true;
   start.x = ev.clientX;
@@ -186,6 +205,7 @@ export const handleMouseDown = (ev) => {
 }
 
 export const handleMouseMove = (ev) => {
+  _log('handleMouseMove');
   const MINIMUM_DELTA = 5;
   const { width, height } = wrapperEl.current.getBoundingClientRect();
   const deltaX = start.x - ev.clientX;
@@ -223,7 +243,8 @@ function _cancelDrag() {
 }
 
 export const handleMouseUp = (ev) => {
-  _cancelMouseDown()
+  _log('handleMouseUp');
+  _cancelMouseDown();
   if (isDragging) {
     _cancelDrag();
   } else {
@@ -232,8 +253,9 @@ export const handleMouseUp = (ev) => {
 }
 
 export const handleMouseLeave = (ev) => {
+  _log('handleMouseLeave');
   _cancelMouseDown();
   if (isDragging) {
-    _cancelDrag()
+    _cancelDrag();
   }
 }
