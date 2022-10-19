@@ -4,18 +4,15 @@ let animationFrameId;
 let clickStep;
 let imgEl;
 let isDragging = false;
+let isPinchZoomGesture = false;
 let isMouseDown = false;
 let maxScale;
 let minScale;
 let origin;
 let scale;
 let start;
-let distanceTotal = 0;
-let distanceOld = 0;
-let distanceNew = 0;
 let wrapperEl;
-let movingDistancePrevious
-let movingDistanceNow
+let startingFingerDistance;
 
 function _log(text) {
   const screenLog = document.getElementById('screenLog');
@@ -33,9 +30,9 @@ function computeOrigin(ev) {
     const x = _origin(ev.clientX, rect.left, rect.width); //x position within the element.
     const y = _origin(ev.clientY, rect.top, rect.height); //y position within the element.
     return [x, y];
-  } else if (ev.type === 'touchstart') {
-    const x = _origin(ev.touches[0].clientX, rect.left, rect.width); //x position within the element.
-    const y = _origin(ev.touches[0].clientY, rect.top, rect.height); //y position within the element.
+  } else if (ev.type === 'touchend') {
+    const x = _origin(ev.changedTouches[0].clientX, rect.left, rect.width); //x position within the element.
+    const y = _origin(ev.changedTouches[0].clientY, rect.top, rect.height); //y position within the element.
     return [x, y];
   } else if (ev.type === 'touchmove') {
     const t0x = _origin(ev.touches[0].clientX, rect.left, rect.width);
@@ -124,45 +121,30 @@ export const handleOnClick = (ev) => {
   }
 };
 
-let startingDistance = 0;
 let totalFingerDistance = 0;
-let isZoomingSession = false;
-let startingScale
 
 
 export const handleTouchStart = (ev) => {
+  ev.preventDefault();
   _log('handleTouchStart');
-  if (ev.touches.length === 1) {
-    handleOnClick(ev);
-  }
   if (ev.touches.length === 2) {
-    ev.preventDefault();
-    // start.x = (ev.touches[0].pageX + ev.touches[1].pageX) / 2;
-    // start.y = (ev.touches[0].pageY + ev.touches[1].pageY) / 2;
-
-    // compute distance between touches
-    gestureStartDistance = 0;
-
+    _log('starting pinch zoom gesture');
+    isPinchZoomGesture = true;
+    startingFingerDistance = 0;
   }
 };
-
-let gestureStartDistance = 0;
-
-/// SCREW CALCULATING DISTANCE, ONLY CARE ABOUT MAKING SCALE BIGGER OR SMALLER!!!
-/// KEEP TRACK OF SCALE SO THAT SCALE WILL WORK WITH TAP ZOOM
-
 
 export const handleTouchMove = (ev) => {
   _log(`handleTouchMove ${scale}`);
   if ((ev.touches.length === 2) && (scale >= minScale) && (scale <= maxScale)) {
     const currentFingerDistance = distance(ev);
-    if (!gestureStartDistance) {
-      gestureStartDistance = currentFingerDistance;
+    if (!startingFingerDistance) {
+      startingFingerDistance = currentFingerDistance;
     }
-    const deltaDistance = currentFingerDistance - gestureStartDistance;
+    const deltaDistance = currentFingerDistance - startingFingerDistance;
     totalFingerDistance = totalFingerDistance + deltaDistance;
 
-    const newScale = scale + totalFingerDistance/(gestureStartDistance * 1000);
+    const newScale = scale + totalFingerDistance/(startingFingerDistance * 500);
 
     _log(`deltaDistance: ${deltaDistance}, newScale: ${newScale}`);
     scale = Math.min(Math.max(minScale, newScale), maxScale);
@@ -187,11 +169,23 @@ export const handleTouchMove = (ev) => {
 
 export const handleTouchEnd = (ev) => {
   ev.preventDefault();
-  _log(`touchend`);
-  imgEl.current.style.transition = TRANSITION_ANIMATION;
-  document.body.style.touchAction = null;
-  totalFingerDistance = 0;
-  _log('gestureStartDistance now zero')
+  _log(`touchend - touches ${ev.touches.length}`);
+
+  if (!isPinchZoomGesture) {
+    handleOnClick(ev);
+  }
+
+  // if we previously did a pinch zoom and all fingers are off the screen, end the zoom
+  if (isPinchZoomGesture && !ev.touches.length) {
+    imgEl.current.style.transition = TRANSITION_ANIMATION;
+    document.body.style.touchAction = null;
+    totalFingerDistance = 0;
+    isPinchZoomGesture = false
+    _log('end of pinch zoom')
+  }
+
+
+
 };
 
 export const handleMouseDown = (ev) => {

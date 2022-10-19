@@ -13,7 +13,7 @@
  *
  * @returns string
  */
- export default (...args) => {
+const cn = (...args) => {
   const flatten = (arr) =>
     arr.reduce(
       (acc, val) => acc.concat(Array.isArray(val) ? flatten(val) : val),
@@ -24,3 +24,5 @@
     .filter((c) => c)
     .join(" ");
 };
+
+export default cn;
